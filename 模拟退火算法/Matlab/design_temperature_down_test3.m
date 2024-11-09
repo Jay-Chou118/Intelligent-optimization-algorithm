@@ -60,11 +60,17 @@ while temperature > final_temperature && iteration < max_iterations
     R2_distribution = zeros(n2, 2); % 每匝的半径和轴向高度
     
     for i = 1:n1
-        R1_i = max_radius_R1 - (i - 1) * min_spacing_R1; % 每个环路的半径根据环间距递减
-        H1_i = (i - 1) * min_spacing_R1; % 轴向高度
+         % 对于第一个线圈，每个环路的半径和高度可能与已有环路相同或不同
+        if rand > 0.5
+            R1_i = max_radius_R1 - (i - 1) * min_spacing_R1; % 与已有环路相同的半径
+        else
+            R1_i = min_radius_R1 + (max_radius_R1 - min_radius_R1) * rand; % 随机不同的半径
+        end
+        H1_i = (i - 1) * min_spacing_R1; % 保持高度一致
         R1_distribution(i, :) = [R1_i, H1_i];
         for j = 1:n1
-            R1_j = max_radius_R1 - (j - 1) * min_spacing_R1;
+            R1_j = R1_distribution(j, 1);
+            %R1_j = max_radius_R1 - (j - 1) * min_spacing_R1;
             d_ij = abs(i - j) * min_spacing_R1; % 环路之间的距离
             if R1_i >= min_radius_R1 && R1_i <= max_radius_R1 && d_ij <= max_axial_height
                 if i == j
@@ -80,11 +86,17 @@ while temperature > final_temperature && iteration < max_iterations
     end
 
     for i = 1:n2
-        R2_i = max_radius_R2 - (i - 1) * min_spacing_R2; % 每个环路的半径根据环间距递减
-        H2_i = (i - 1) * min_spacing_R2; % 轴向高度
+        % 对于第二个线圈，每个环路的半径和高度可能与已有环路相同或不同
+        if rand > 0.5
+            R2_i = max_radius_R2 - (i - 1) * min_spacing_R2; % 与已有环路相同的半径
+        else
+            R2_i = min_radius_R2 + (max_radius_R2 - min_radius_R2) * rand; % 随机不同的半径
+        end
+        H2_i = (i - 1) * min_spacing_R2; % 保持高度一致
         R2_distribution(i, :) = [R2_i, H2_i];
         for j = 1:n2
-            R2_j = max_radius_R2 - (j - 1) * min_spacing_R2;
+            R2_j = R2_distribution(j, 1);
+            %R2_j = max_radius_R2 - (j - 1) * min_spacing_R2;
             d_ij = abs(i - j) * min_spacing_R2; % 环路之间的距离
             if R2_i >= min_radius_R2 && R2_i <= max_radius_R2 && d_ij <= max_axial_height
                 if i == j
@@ -185,3 +197,26 @@ fprintf('最佳第二个线圈环路数量 n2 = %d\n', best_n2);
 fprintf('第一个线圈的总自感 L1: %.6e mH\n', L1_total*1000);
 fprintf('第二个线圈的总自感 L2: %.6e mH\n', L2_total*1000);
 fprintf('两个线圈之间的互感 M: %.6e H\n', M_total);
+fprintf('Best k: %.6f\n', best_k);
+
+% 绘制线圈设计图
+figure;
+hold on;
+% 绘制第一个线圈 (红色，顶部位置)
+scatter(-best_R1_distribution(:, 1) * 1000, best_R1_distribution(:, 2) * 1000 + 150, 'r');
+scatter(best_R1_distribution(:, 1) * 1000, best_R1_distribution(:, 2) * 1000 + 150, 'r');
+rectangle('Position',[-max(best_R1_distribution(:, 1)) * 1000, 150, 2 * max(best_R1_distribution(:, 1)) * 1000, 50], 'EdgeColor', 'r', 'LineStyle', '--');
+% 绘制第二个线圈 (蓝色，底部位置)
+scatter(-best_R2_distribution(:, 1) * 1000, best_R2_distribution(:, 2) * 1000 - 150, 'b');
+scatter(best_R2_distribution(:, 1) * 1000, best_R2_distribution(:, 2) * 1000 - 150, 'b');
+rectangle('Position',[-max(best_R2_distribution(:, 1)) * 1000, -200, 2 * max(best_R2_distribution(:, 1)) * 1000, 50], 'EdgeColor', 'b', 'LineStyle', '--');
+% 设置图形属性
+xlabel('Lateral direction (mm)');
+ylabel('Axial direction (mm)');
+title('Coil Design with Separation');
+legend('Coil 1', 'Coil 2');
+grid on;
+axis equal;
+hold off;
+
+
