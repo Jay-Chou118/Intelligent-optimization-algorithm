@@ -88,10 +88,32 @@ while temperature > final_temperature && iteration < max_iterations
         end
     end
     
+<<<<<<< HEAD
     % 计算自感和互感
     L1_total = 0;
     L2_total = 0;
     M_total = 0;
+=======
+
+    % 使用矢量化和并行计算来优化自感矩阵 L1 的计算
+% 使用矢量化和并行计算来优化互感矩阵 M 的计算parfor i = 1:n1
+    R1_i = R1_distribution(i, 1);
+    R2_distribution_local = R2_distribution; % 创建本地版本，减少对共享变量的依赖
+    for j = 1:n2
+        R2_j = R2_distribution_local(j, 1);
+        if R1_i >= min_radius_R1 && R1_i <= max_radius_R1 && R2_j >= min_radius_R2 && R2_j <= max_radius_R2
+            syms phi1 phi2 R1_sym R2_sym d_sym
+            R1_sym = R1_i;
+            R2_sym = R2_j;
+            d_sym = d12;
+            M_sym = mu_0 * R1_sym * R2_sym / sqrt((R1_sym * cos(phi1) - R2_sym * cos(phi2))^2 + (R1_sym * sin(phi1) - R2_sym * sin(phi2))^2 + d_sym^2);
+            M_matrix(i, j) = double(vpa(int(int(M_sym, phi1, 0, 2 * pi), phi2, 0, 2 * pi)));
+        end
+    end
+end
+
+    % 计算两个线圈之间的互感矩阵 M
+>>>>>>> b1203998b8afd0d72bae25d3c01e1f9871170782
     for i = 1:n1
         R1_i = R1_distribution(i, 1);
         % 使用 Grover 方法计算自感
