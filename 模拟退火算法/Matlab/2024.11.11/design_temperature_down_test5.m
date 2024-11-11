@@ -8,8 +8,8 @@ r1 = 0.001; % 第一个线圈的初始导线直径 (m)
 r2 = 0.0008; % 第二个线圈的初始导线直径 (m)
 
 % 定义限制条件
-min_spacing_R1 = r1; % 第一个线圈的最小环间距为导线直径 (m)
-min_spacing_R2 = r2; % 第二个线圈的最小环间距为导线直径 (m)
+min_spacing_R1 = r1; % 更新最小匝间距以确保其随导线直径变化 % 第一个线圈的最小环间距为导线直径 (m)
+min_spacing_R2 = r2; % 更新最小匝间距以确保其随导线直径变化 % 第二个线圈的最小环间距为导线直径 (m)
 min_radius_R1 = 0.005; % 第一个线圈的最小半径 (m)
 max_radius_R1 = 0.06; % 第一个线圈的最大半径 (m)
 min_radius_R2 = 0.002; % 第二个线圈的最小半径 (m)
@@ -24,13 +24,15 @@ min_n1 = 50; % 第一个线圈的最小环路数量
 max_n1 = 2000; % 第一个线圈的最大环路数量
 min_n2 = 30; % 第二个线圈的最小环路数量
 max_n2 = 1000; % 第二个线圈的最大环路数量
+max_layers_R1 = floor(max_axial_height_R1 / r1); % 第一个线圈的最大层数
+max_layers_R2 = floor(max_axial_height_R2 / r2); % 第二个线圈的最大层数
 
 
 % 模拟退火算法参数
-max_iterations = 10000;
-initial_temperature = 100000;
+max_iterations = 100000;
+initial_temperature = 1000000;
 final_temperature = 1e-5;
-cooling_rate = 0.90;
+cooling_rate = 0.99 ;
 
 
 % 初始化最优参数和最优耦合系数
@@ -69,27 +71,30 @@ while temperature > final_temperature && iteration < max_iterations
     
     current_layer_R1 = min_radius_R1; % 初始化第一层半径（第一个线圈）
     current_height_R1 = 0; % 当前高度（第一个线圈）
+    current_layer_number_R1 = 1; % 当前层数（第一个线圈）
+    
     current_layer_R2 = min_radius_R2; % 初始化第一层半径（第二个线圈）
     current_height_R2 = 0; % 当前高度（第二个线圈）
-    
+    current_layer_number_R2 = 1; % 当前层数（第二个线圈）
     
      for i = 1:n1
-        % 确保下一层的每个环路下方有上一层的支持，并且总高度不超过最大轴向高度,且环路不重叠
-        if current_height_R1 >= max_axial_height_R1
-            break; % 如果高度超过限制，停止增加匝数
+        % 确保匝之间的间距不小于导线直径，并且半径不超过最大限制
+        if current_height_R1 >= max_axial_height_R1 || current_layer_number_R1 > max_layers_R1 || current_layer_R1 > max_radius_R1
+            break; % 如果高度、层数或半径超过限制，停止增加匝数
         end
         R1_i = current_layer_R1;
         H1_i = current_height_R1; % 当前高度
         R1_distribution(i, :) = [R1_i, H1_i];
-        current_height_R1 = current_height_R1 + min_spacing_R1 + r1; % 增加高度，确保环路不重叠
+        current_height_R1 = current_height_R1 + min_spacing_R1 + r1; % 使用动态更新的最小匝间距 % 增加高度，确保环路不重叠
         if current_height_R1 >= max_axial_height_R1 % 如果达到最大高度，增加半径并重置高度
-            current_layer_R1 = current_layer_R1 + min_spacing_R1 + r1;
+            current_layer_R1 = current_layer_R1 + min_spacing_R1 + r1; % 使用动态更新的最小匝间距
             current_height_R1 = 0;
+            current_layer_number_R1 = current_layer_number_R1 + 1;
         end
         for j = 1:n1
             R1_j = R1_distribution(j, 1);
             d_ij = abs(H1_i - R1_distribution(j, 2)); % 环路之间的距离（轴向高度差）
-           if R1_i >= min_radius_R1 && R1_i <= max_radius_R1 && d_ij <= max_axial_height_R1
+           if R1_i >= min_radius_R1 && R1_i <= max_radius_R1 && d_ij >= min_spacing_R1
                 if i == j
                     L1_matrix(i, j) = mu_0 * R1_i * (log(8 * R1_i / min_spacing_R1) - 7 / 4); % 自感
                 else
@@ -103,22 +108,23 @@ while temperature > final_temperature && iteration < max_iterations
     end
 
     for i = 1:n2
-        % 确保下一层的每个环路下方有上一层的支持，并且总高度不超过最大轴向高度,且环路不重叠
-        if current_height_R2 >= max_axial_height_R2
-            break; % 如果高度超过限制，停止增加匝数
+        % 确保匝之间的间距不小于导线直径，并且半径不超过最大限制
+        if current_height_R2 >= max_axial_height_R2 || current_layer_number_R2 > max_layers_R2 || current_layer_R2 > max_radius_R2
+            break; % 如果高度、层数或半径超过限制，停止增加匝数
         end
         R2_i = current_layer_R2;
         H2_i = current_height_R2; % 当前高度
         R2_distribution(i, :) = [R2_i, H2_i];
-        current_height_R2 = current_height_R2 + min_spacing_R2 + r2; % 增加高度，确保环路不重叠
+        current_height_R2 = current_height_R2 + min_spacing_R2 + r2; % 使用动态更新的最小匝间距 % 增加高度，确保环路不重叠
         if current_height_R2 >= max_axial_height_R2 % 如果达到最大高度，增加半径并重置高度
-            current_layer_R2 = current_layer_R2 + min_spacing_R2 + r2;
+            current_layer_R2 = current_layer_R2 + min_spacing_R2 + r2; % 使用动态更新的最小匝间距
             current_height_R2 = 0;
+            current_layer_number_R2 = current_layer_number_R2 + 1;
         end
         for j = 1:n2
             R2_j = R2_distribution(j, 1);
             d_ij = abs(H2_i - R2_distribution(j, 2)); % 环路之间的距离（轴向高度差）
-            if R2_i >= min_radius_R2 && R2_i <= max_radius_R2 && d_ij <= max_axial_height_R2
+            if R2_i >= min_radius_R2 && R2_i <= max_radius_R2 && d_ij >= min_spacing_R2
                 if i == j
                     L2_matrix(i, j) = mu_0 * R2_i * (log(8 * R2_i / min_spacing_R2) - 7 / 4); % 自感
                 else
@@ -220,33 +226,25 @@ figure;
 hold on;
 axis equal; % 保持图形的纵横比例一致，确保线圈看起来是圆形的
 
+
+% 绘制线圈设计图
+figure;
+hold on;
 % 绘制第一个线圈 (红色，顶部位置)
-for i = 1:best_n1
-    theta = linspace(0, 2 * pi, 100);
-    x_center = best_R1_distribution(i, 1) * 1000; % 中心位置
-    y_center = best_R1_distribution(i, 2) * 1000 + 150; % 高度位置转换为毫米，并调整到图中合适位置
-    x = x_center + (r1 / 2) * 1000 * cos(theta); % 半径乘以1000转换为毫米
-    y = y_center + (r1 / 2) * 1000 * sin(theta);
-    fill(x, y, 'r', 'EdgeColor', 'k');
-end
-
-% 绘制第二个线圈 (蓝色，底部位置，对称绘制)
-for i = 1:best_n2
-    theta = linspace(0, 2 * pi, 100);
-    x_center = best_R2_distribution(i, 1) * 1000; % 中心位置
-    y_center = best_R2_distribution(i, 2) * 1000 - 150; % 高度位置转换为毫米，并调整到图中合适位置
-    x = x_center + (r2 / 2) * 1000 * cos(theta); % 半径乘以1000转换为毫米
-    y = y_center + (r2 / 2) * 1000 * sin(theta);
-    fill(x, y, 'b', 'EdgeColor', 'k');
-end
-
+scatter(-best_R1_distribution(:, 1) * 1000, best_R1_distribution(:, 2) * 1000 + 150, 'r', 'filled');
+scatter(best_R1_distribution(:, 1) * 1000, best_R1_distribution(:, 2) * 1000 + 150, 'r', 'filled');
+rectangle('Position',[-max(best_R1_distribution(:, 1)) * 1000, 150, 2 * max(best_R1_distribution(:, 1)) * 1000, 50], 'EdgeColor', 'r', 'LineStyle', '--', 'LineWidth', 1.5);
+% 绘制第二个线圈 (蓝色，底部位置)
+scatter(-best_R2_distribution(:, 1) * 1000, best_R2_distribution(:, 2) * 1000 - 150, 'b', 'filled');
+scatter(best_R2_distribution(:, 1) * 1000, best_R2_distribution(:, 2) * 1000 - 150, 'b', 'filled');
+rectangle('Position',[-max(best_R2_distribution(:, 1)) * 1000, -200, 2 * max(best_R2_distribution(:, 1)) * 1000, 50], 'EdgeColor', 'b', 'LineStyle', '--', 'LineWidth', 1.5);
 % 添加线圈之间的连接线
 line([0, 0], [-150, 150], 'Color', 'k', 'LineStyle', '-.', 'LineWidth', 1.5);
-
-% 设置图形
-xlabel('X (mm)');
-ylabel('Y (mm)');
-title('线圈设计图');
+% 设置图形属性
+xlabel('Lateral direction (mm)');
+ylabel('Axial direction (mm)');
+title('Detailed Coil Design with Separation');
+legend('Coil 1 (Top)', 'Coil 2 (Bottom)', 'Location', 'Best');
 grid on;
+axis equal;
 hold off;
-
