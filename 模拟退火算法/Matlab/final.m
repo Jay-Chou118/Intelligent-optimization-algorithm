@@ -92,11 +92,11 @@ while temperature > final_temperature && iteration < max_iterations
     
 
     % 使用矢量化和并行计算来优化自感矩阵 L1 的计算
-% 使用矢量化和并行计算来优化互感矩阵 M 的计算
-parfor i = 1:n1
+% 使用矢量化和并行计算来优化互感矩阵 M 的计算parfor i = 1:n1
     R1_i = R1_distribution(i, 1);
+    R2_distribution_local = R2_distribution; % 创建本地版本，减少对共享变量的依赖
     for j = 1:n2
-        R2_j = R2_distribution(j, 1);
+        R2_j = R2_distribution_local(j, 1);
         if R1_i >= min_radius_R1 && R1_i <= max_radius_R1 && R2_j >= min_radius_R2 && R2_j <= max_radius_R2
             syms phi1 phi2 R1_sym R2_sym d_sym
             R1_sym = R1_i;
@@ -106,7 +106,6 @@ parfor i = 1:n1
             M_matrix(i, j) = double(vpa(int(int(M_sym, phi1, 0, 2 * pi), phi2, 0, 2 * pi)));
         end
     end
-end
 end
 
     % 计算两个线圈之间的互感矩阵 M
