@@ -47,15 +47,22 @@ function M12 = mutualInductance(R1, R2, d12, p)
     % Physical constant
     mu0 = 4 * pi * 1e-7; % Permeability of free space (H/m)
     
-    % Function to integrate
-    integrand = @(x) besselj(1, x * sqrt(R1 / R2)) .* besselj(1, x * sqrt(R2 / R1)) .* besselj(0, x * p / sqrt(R1 * R2)) ...
-                    .* exp(-x * d12 / sqrt(R1 * R2));
-    
-    % Numerical integration from 0 to infinity
-    integral_result = integral(integrand, 0, Inf);
-    
-    % Compute mutual inductance
-    M12 = mu0 * pi * sqrt(R1 * R2) * integral_result;
+    if p == 0
+        % Use elliptic integral formula for p = 0
+        kappa = sqrt(4 * R1 * R2 / ((R1 + R2)^2 + d12^2));
+        [K, E] = ellipke(kappa^2);
+        M12 = mu0 * sqrt(R1 * R2) * ((2 / kappa - kappa) * K - (2 / kappa) * E);
+    else
+        % Function to integrate
+        integrand = @(x) besselj(1, x * sqrt(R1 / R2)) .* besselj(1, x * sqrt(R2 / R1)) .* besselj(0, x * p / sqrt(R1 * R2)) ...
+                        .* exp(-x * d12 / sqrt(R1 * R2));
+
+        % Numerical integration from 0 to infinity
+        integral_result = integral(integrand, 0, Inf);
+
+        % Compute mutual inductance
+        M12 = mu0 * pi * sqrt(R1 * R2) * integral_result;
+    end
 end
 
 function L = selfInductance(R, r)
